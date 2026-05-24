@@ -1,9 +1,11 @@
 {
     "id": "basic-authentication",
     "name": "Basic Authentication",
-    "version": "1.0.0",
+    "version": "0.0.2",
     "description": "Предоставя автентикация за клиенти и администратори.",
-    "author": "Flex Team",
+    "author": "Kristian Kostadinov",
+    "author_url": "https://kriskata.com",
+    "repository": "https://github.com/flex-cms/flex-plugin-basic-authentication",
     "requires": {
         "core": ">=0.0.4"
     },
