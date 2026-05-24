@@ -2,15 +2,44 @@
 
 namespace Plugins\BasicAuthentication\Controllers;
 
+use InvalidArgumentException;
+use Exception;
 use Flex\Core\Auth;
 use Flex\Core\Controllers\BaseController;
-use Flex\Core\Mail\Mailer;
 use Flex\Core\Routing\View;
 use Flex\Core\Services\PasswordResetService;
-use Flex\Models\User;
+use Plugins\BasicAuthentication\Services\UserService;
 
 class UserController extends BaseController
 {
+    protected UserService $userService;
+
+    public function __construct()
+    {
+        $this->userService = new UserService();
+    }
+
+    public function createUser(): void
+    {
+        $email = trim($_POST['email'] ?? '');
+
+        try {
+            $user = $this->userService->register($_POST);
+
+            Auth::login($user);
+            $this->redirectByUserRole();
+        } catch (InvalidArgumentException $e) {
+            $error = $e->getMessage();
+        } catch (Exception $e) {
+            $error = $e->getMessage();
+        }
+
+        $this->render(View::make('auth/register', [
+            'error' => $error,
+            'old'   => ['email' => $email]
+        ]));
+    }
+    
     public function login()
     {
         $data = ['title' => 'Вход | Flex CMS'];
@@ -55,77 +84,6 @@ class UserController extends BaseController
         $this->render(View::make('auth/login', $data));
     }
 
-    public function createUser(): void
-    {
-        $email = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
-        $passwordConfirmation = $_POST['password_confirmation'] ?? '';
-
-        if (empty($email) || empty($password)) {
-            $data = [
-                'error' => 'Всички полета са задължителни!',
-                'old' => ['email' => $email]
-            ];
-            $this->render(View::make('auth/register', $data));
-            return;
-        }
-
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $data = [
-                'error' => 'Невалиден имейл формат!',
-                'old' => ['email' => $email]
-            ];
-            $this->render(View::make('auth/register', $data));
-            return;
-        }
-
-        if ($password !== $passwordConfirmation) {
-            $data = [
-                'error' => 'Паролите не съвпадат!',
-                'old' => ['email' => $email]
-            ];
-            $this->render(View::make('auth/register', $data));
-            return;
-        }
-
-        $existingEmail = User::where('email', $email)->first();
-        if ($existingEmail) {
-            $data = [
-                'error' => 'Имейл адресът вече е зает!',
-                'old' => ['email' => $email]
-            ];
-            $this->render(View::make('auth/register', $data));
-            return;
-        }
-
-        $emailParts = explode('@', $email);
-        $baseUsername = preg_replace('/[^a-zA-Z0-9_\.]/', '', $emailParts[0]);
-
-        do {
-            $username = $baseUsername . rand(100, 999);
-            $usernameExists = User::where('username', $username)->exists();
-        } while ($usernameExists);
-
-        $user = User::create([
-            'username' => $username,
-            'email' => $email,
-            'password' => $password,
-            'is_active' => true
-        ]);
-
-        if ($user) {
-            Auth::login($user);
-            View::redirect('/admin/dashboard');
-            return;
-        }
-
-        $data = [
-            'error' => 'Възникна грешка при регистрацията. Моля, опитайте отново!',
-            'old' => ['email' => $email]
-        ];
-        $this->render(View::make('auth/register', $data));
-    }
-
     public function showForgotPassword()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -167,7 +125,7 @@ class UserController extends BaseController
                 $_SESSION['flash_error'] = 'Не е намерен потребител с този имейл адрес.';
             }
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $_SESSION['flash_error'] = $e->getMessage();
         }
 
