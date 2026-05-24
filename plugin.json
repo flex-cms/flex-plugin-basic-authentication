@@ -1,0 +1,24 @@
+{
+    "id": "basic-authentication",
+    "name": "Basic Authentication",
+    "version": "1.0.0",
+    "description": "Предоставя автентикация за клиенти и администратори.",
+    "author": "Flex Team",
+    "requires": {
+        "core": ">=0.0.4"
+    },
+    "assets": {
+        "styles": [
+            {
+                "src": "assets/dist/plugin.css",
+                "only_on": ["/auth/login", "/auth/register", "/password/*"]
+            }
+        ],
+        "scripts": [
+            {
+                "src": "assets/dist/plugin.js",
+                "only_on": ["/auth/login", "/auth/register"]
+            }
+        ]
+    }
+}
