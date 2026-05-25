@@ -1,9 +1,10 @@
 <?php
 
+use Flex\Core\Events\EventManager;
 use Flex\Core\Middlewares\GuestMiddleware;
 use Plugins\BasicAuthentication\Controllers\UserController;
 
-$eventManager->listen('router.register', function ($router) {
+EventManager::getInstance()->listen('router.register', function ($router) {
     $router->get('/auth/login', [UserController::class, 'login'], [GuestMiddleware::class]);
     $router->get('/auth/register', [UserController::class, 'register'], [GuestMiddleware::class]);
     $router->post('/auth/login', [UserController::class, 'authenticate'], [GuestMiddleware::class]);

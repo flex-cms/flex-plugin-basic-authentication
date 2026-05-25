@@ -7,7 +7,7 @@ use Exception;
 use Flex\Core\Auth;
 use Flex\Core\Controllers\BaseController;
 use Flex\Core\Routing\View;
-use Flex\Core\Services\PasswordResetService;
+use Plugins\BasicAuthentication\Services\PasswordResetService;
 use Plugins\BasicAuthentication\Services\UserService;
 
 class UserController extends BaseController
