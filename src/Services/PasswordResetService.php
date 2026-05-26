@@ -34,6 +34,12 @@ class PasswordResetService
             }
         }
 
+        $template = EmailTemplate::where('slug', 'auth.password_reset')->first();
+
+        if (!$template) {
+            throw new Exception("Шаблонът за парола не е намерен.");
+        }
+
         PasswordReset::where('email', $email)->delete();
 
         $token = bin2hex(random_bytes(32));
@@ -44,12 +50,6 @@ class PasswordResetService
             'expires_at' => TimeHelper::addTime('+1 hour')
         ]);
 
-        $template = EmailTemplate::where('slug', 'auth.password_reset')->first();
-
-        if (!$template) {
-            throw new Exception("Шаблонът за парола не е намерен.");
-        }
-
         $baseUrl = $_ENV['APP_URL'] ?? 'https://kriskata.com';
         $resetLink = $baseUrl . "/password/change?token=" . $token;
 
@@ -57,7 +57,7 @@ class PasswordResetService
             ->subject($template->subject)
             ->body($template->body)
             ->withVariables([
-                'user_name' => $user->name ?? 'Fullname',
+                'user_name' => $user->fullname ?? 'Fullname',
                 'reset_url' => $resetLink
             ])
             ->send();

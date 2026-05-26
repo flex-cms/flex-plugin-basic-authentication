@@ -19,7 +19,13 @@ use Flex\Core\UI\Form;
             </p>
         </div>
 
-        <?= Alert::make($error ?? null); ?>
+        <?php if (!empty($error)): ?>
+            <?= Alert::make($error)->error(); ?>
+        <?php endif; ?>
+
+        <?php if (!empty($status)): ?>
+            <?= Alert::make($status)->success(); ?>
+        <?php endif; ?>
 
         <form class="mt-8 space-y-6" action="/auth/login" method="POST">
             <div class="rounded-md space-y-4">
@@ -42,7 +48,7 @@ use Flex\Core\UI\Form;
                     'value' => false
                 ]); ?>
 
-                <?= Link::make('/password/reset', 'Забравена парола?'); ?>
+                <?= Link::make('/password/forgot', 'Забравена парола?'); ?>
             </div>
 
             <div>

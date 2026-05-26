@@ -2,6 +2,8 @@
 
 namespace Plugins\BasicAuthentication\Controllers;
 
+use Flex\Models\PasswordReset;
+use Flex\Models\User;
 use InvalidArgumentException;
 use Exception;
 use Flex\Core\Auth;
@@ -36,10 +38,10 @@ class UserController extends BaseController
 
         $this->render(View::make('auth/register', [
             'error' => $error,
-            'old'   => ['email' => $email]
+            'old' => ['email' => $email]
         ]));
     }
-    
+
     public function login()
     {
         $data = ['title' => 'Вход | Flex CMS'];
@@ -69,11 +71,9 @@ class UserController extends BaseController
             if ($redirectUrl) {
                 unset($_SESSION['redirect_url']);
                 View::redirect($redirectUrl, 302);
-                return;
             }
 
             $this->redirectByUserRole();
-            return;
         }
 
         $data = [
@@ -84,16 +84,16 @@ class UserController extends BaseController
         $this->render(View::make('auth/login', $data));
     }
 
-    public function showForgotPassword()
+    public function forgot()
     {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
 
         $error = $_SESSION['flash_error'] ?? null;
-        $status = $_SESSION['flash_status'] ?? null;
+        $status = $_SESSION['flash_success'] ?? null;
 
-        unset($_SESSION['flash_error'], $_SESSION['flash_status']);
+        unset($_SESSION['flash_error'], $_SESSION['flash_success']);
 
         $this->render(View::make('auth/forgot-password', [
             'title' => 'Забравена парола',
@@ -112,7 +112,7 @@ class UserController extends BaseController
 
         if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $_SESSION['flash_error'] = 'Моля, въведете валиден имейл адрес.';
-            View::redirect('/password/reset');
+            View::redirect('/password/forgot');
         }
 
         try {
@@ -120,7 +120,7 @@ class UserController extends BaseController
             $isSent = $service->handle($email);
 
             if ($isSent) {
-                $_SESSION['flash_status'] = 'Линкът за възстановяване е изпратен успешно на Вашия имейл!';
+                $_SESSION['flash_success'] = 'Линкът за възстановяване е изпратен успешно на Вашия имейл!';
             } else {
                 $_SESSION['flash_error'] = 'Не е намерен потребител с този имейл адрес.';
             }
@@ -129,7 +129,71 @@ class UserController extends BaseController
             $_SESSION['flash_error'] = $e->getMessage();
         }
 
-        View::redirect('/password/reset');
+        View::redirect('/password/forgot');
+    }
+
+    public function reset()
+    {
+        $token = $_GET['token'] ?? null;
+
+        if (!$token) {
+            $_SESSION['flash_error'] = 'Липсва токен за възстановяване.';
+            View::redirect('/password/forgot');
+        }
+
+        $resetRecord = PasswordReset::where('token', $token)->first();
+
+        if (!$resetRecord || $resetRecord->isExpired()) {
+            $_SESSION['flash_error'] = 'Токенът е невалиден или вече е изтекъл.';
+            View::redirect('/password/forgot');
+        }
+
+        $this->render(View::make('auth/reset-password', [
+            'title' => 'Промяна на парола',
+            'token' => $token
+        ]));
+    }
+
+    public function change()
+    {
+        $token = $_POST['token'] ?? null;
+        $password = $_POST['password'] ?? null;
+        $passwordConfirm = $_POST['password_confirm'] ?? null;
+
+        if (!$token || !$password || $password !== $passwordConfirm) {
+            $this->render(View::make('auth/reset-password', [
+                'title' => 'Промяна на парола',
+                'token' => $token,
+                'error' => 'Моля, попълнете правилно всички полета.'
+            ]));
+        }
+
+        $resetRecord = PasswordReset::where('token', $token)->first();
+
+        if (!$resetRecord || $resetRecord->isExpired()) {
+            return $this->render(View::make('auth/forgot-password', [
+                'title' => 'Забравена парола',
+                'error' => 'Токенът е невалиден или изтекъл.'
+            ], 'auth'));
+        }
+
+        $user = User::where('email', $resetRecord->email)->first();
+
+        if (!$user) {
+            return $this->render(View::make('auth/forgot-password', [
+                'title' => 'Забравена парола',
+                'error' => 'Потребителят не е намерен.'
+            ], 'auth'));
+        }
+
+        $user->update([
+            'password' => $password
+        ]);
+
+        PasswordReset::deleteExistingForEmail($resetRecord->email);
+
+        $_SESSION['flash_success'] = 'Паролата ви е променена успешно. Можете да влезете в профила си.';
+        View::redirect('/auth/login');
     }
 
     private function redirectByUserRole(): void
